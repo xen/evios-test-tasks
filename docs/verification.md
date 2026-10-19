@@ -2,7 +2,7 @@
 
 Latest acceptance audit and fixes: [2026-10-19 audit](acceptance-audit-2026-10-19.md). The results below preserve the original implementation run; the audit contains the current 88 backend / 66 full-suite browser checks.
 
-Scope: first assignment, role-aware Fullstack FastAPI application. At this checkpoint Ghost was deferred and the VPS was unchanged. The subsequent Ghost deployment is documented separately in [ghost/verification.md](../ghost/verification.md).
+Scope: role-aware Fullstack FastAPI application.
 
 Detailed implementation plan and acceptance criteria: [Russian specification](specs/2026-10-19-evios.md).
 

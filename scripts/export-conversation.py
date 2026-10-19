@@ -25,6 +25,8 @@ for line in Path(sys.argv[1]).open():
     text = "\n".join(item["text"] for item in payload.get("content", []) if item.get("type") in ("input_text", "output_text") and item.get("text"))
     if role == "user" and "Мне нужно выполнить два тестовых задания" in text:
         started = True
+    if role == "user" and "Давай к следующему шагу" in text:
+        break
     if not started or not text:
         continue
     if text.startswith("<external_codex_apps_open_page>"):
@@ -39,6 +41,6 @@ if not messages:
     raise SystemExit("No task dialogue found")
 (root / "ai").mkdir(exist_ok=True)
 (root / "ai/messages.json").write_text(json.dumps(messages, ensure_ascii=False, indent=2) + "\n")
-intro = "# AI conversation copy\n\nExport of visible user/assistant messages for this task, up to the export timestamp. Internal instructions, tools and private reasoning are excluded. Async replies show the question and exact human answer. This is a dialogue export, not a reconstructed summary.\n\n"
+intro = "# AI conversation copy\n\nExport of visible user/assistant messages for the Fullstack assignment through its review and merge. The initial request mentions both assignments; subsequent deployment work is excluded. Internal instructions, tools and private reasoning are excluded. Async replies show the question and exact human answer. This is a dialogue export, not a reconstructed summary.\n\n"
 (root / "ai/conversation.md").write_text(intro + "\n\n".join(f"## {m['role'].title()} — {m['timestamp']}\n\n{m['text'].rstrip()}" for m in messages) + "\n")
 print(f"Exported {len(messages)} visible messages")
