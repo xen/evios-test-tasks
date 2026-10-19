@@ -15,3 +15,6 @@ ghost/.state/
 **/playwright/.auth/
 **/.mypy_cache/
 **/.ty_cache/
+# Application source must remain visible even with a workstation-wide lib ignore.
+!fullstack/frontend/src/lib/
+!fullstack/frontend/src/lib/*.ts

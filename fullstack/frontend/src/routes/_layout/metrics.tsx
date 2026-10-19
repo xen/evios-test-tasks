@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute, ErrorComponent } from "@tanstack/react-router"
 import { AxiosError } from "axios"
-import { MetricsService, UsersService } from "@/client"
+import { MetricsService } from "@/client"
 import AccessDenied from "@/components/Common/AccessDenied"
 import useAuth from "@/hooks/useAuth"
 import { can } from "@/lib/permissions"
@@ -14,10 +14,9 @@ export const Route = createFileRoute("/_layout/metrics")({
     ) : (
       <ErrorComponent error={error} />
     ),
-  beforeLoad: async () => {
-    const { data: user } = await UsersService.readUserMe()
-    return { canReadMetrics: can(user, "metrics:read") }
-  },
+  beforeLoad: ({ context }) => ({
+    canReadMetrics: can(context.currentUser, "metrics:read"),
+  }),
   head: () => ({ meta: [{ title: "Metrics - FastAPI Template" }] }),
 })
 

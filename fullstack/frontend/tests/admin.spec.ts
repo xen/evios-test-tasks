@@ -93,7 +93,7 @@ test.describe("Admin user management", () => {
     await page.getByRole("button", { name: "Save" }).click()
 
     await expect(page.getByText("User updated successfully")).toBeVisible()
-    await expect(page.getByText(updatedName)).toBeVisible()
+    await expect(userRow.getByText(updatedName)).toBeVisible()
   })
 
   test("Delete a user successfully", async ({ page }) => {
@@ -204,5 +204,84 @@ test.describe("Admin page access control", () => {
     await page.goto("/admin")
 
     await expect(page.getByRole("heading", { name: "Users" })).toBeVisible()
+  })
+})
+
+test("Admin account deletion controls are hidden", async ({ page }) => {
+  await page.goto("/settings")
+  await expect(
+    page.getByRole("heading", { name: "User Settings" }),
+  ).toBeVisible()
+  await expect(page.getByRole("tab", { name: "Danger zone" })).toHaveCount(0)
+  await expect(
+    page.getByRole("heading", { name: "Delete Account" }),
+  ).toHaveCount(0)
+})
+
+test.describe("Role changes in the same browser session", () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test("Navigation refreshes capability checks and sidebar after demotion", async ({
+    page,
+    request,
+  }) => {
+    const api = process.env.VITE_API_URL
+    if (!api) throw new Error("VITE_API_URL is required")
+    const login = await request.post(`${api}/api/v1/login/access-token`, {
+      form: { username: firstSuperuser, password: firstSuperuserPassword },
+    })
+    expect(login.ok()).toBeTruthy()
+    const { access_token } = await login.json()
+    const headers = { Authorization: `Bearer ${access_token}` }
+    const email = randomEmail()
+    const password = randomPassword()
+    const created = await request.post(`${api}/api/v1/users/`, {
+      headers,
+      data: { email, password, role: "admin" },
+    })
+    expect(created.ok()).toBeTruthy()
+    const user = await created.json()
+    try {
+      await logInUser(page, email, password)
+      const manager = await request.patch(`${api}/api/v1/users/${user.id}`, {
+        headers,
+        data: { role: "manager" },
+      })
+      expect(manager.ok()).toBeTruthy()
+      await page.getByRole("link", { name: "Users", exact: true }).click()
+      await expect(
+        page.getByRole("heading", { name: "Users", exact: true }),
+      ).toBeVisible()
+      await expect(page.getByRole("button", { name: "Add User" })).toHaveCount(
+        0,
+      )
+      await expect(page.getByRole("table").getByRole("button")).toHaveCount(0)
+      const member = await request.patch(`${api}/api/v1/users/${user.id}`, {
+        headers,
+        data: { role: "member" },
+      })
+      expect(member.ok()).toBeTruthy()
+      await page.getByRole("link", { name: "Metrics", exact: true }).click()
+      await expect(
+        page.getByRole("heading", { name: "Access denied" }),
+      ).toBeVisible()
+      await expect(
+        page.getByRole("link", { name: "Users", exact: true }),
+      ).toHaveCount(0)
+      await expect(
+        page.getByRole("link", { name: "Metrics", exact: true }),
+      ).toHaveCount(0)
+      await expect(page.getByTestId("user-menu")).toContainText(email)
+      await expect(page).toHaveURL(/\/metrics$/)
+      await page.getByTestId("user-menu").click()
+      await page.getByRole("menuitem", { name: "User Settings" }).click()
+      await expect(page).toHaveURL(/\/settings$/)
+      await expect(page.getByRole("tab", { name: "Danger zone" })).toBeVisible()
+    } finally {
+      const deleted = await request.delete(`${api}/api/v1/users/${user.id}`, {
+        headers,
+      })
+      expect(deleted.ok()).toBeTruthy()
+    }
   })
 })

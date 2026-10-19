@@ -28,10 +28,9 @@ export const Route = createFileRoute("/_layout/admin")({
     ) : (
       <ErrorComponent error={error} />
     ),
-  beforeLoad: async () => {
-    const { data: user } = await UsersService.readUserMe()
-    return { canReadUsers: can(user, "users:read") }
-  },
+  beforeLoad: ({ context }) => ({
+    canReadUsers: can(context.currentUser, "users:read"),
+  }),
   head: () => ({
     meta: [
       {

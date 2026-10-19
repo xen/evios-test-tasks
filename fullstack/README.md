@@ -64,7 +64,7 @@ Settings in the template are personal profile/password/account settings, availab
 
 The `role` column is a non-null VARCHAR with a PostgreSQL CHECK constraint and Python enum validation. The migration upgrades existing `is_superuser=true` users to `admin` and all others to `member`, then removes the boolean. Downgrading maps admins to true and members/managers to false, so the manager distinction is lost on downgrade. Register/self-update schemas reject privilege fields, and administrative schemas reject unknown roles and legacy fields. There is one source of authority: no boolean compatibility alias. The template's unauthenticated development-only `/private/users/` route was removed; test fixtures use normal signup.
 
-`UserPublic.permissions`, including the `/users/me` response, exposes the server-computed capability list. The generated OpenAPI client types it, and the frontend's `can()` helper uses it for navigation, create buttons and user-action menus. Managers get a read-only Users table. Route guards fetch current capabilities and render an explicit Access denied page on direct unauthorized navigation. API 403 responses retain the session; authentication 401 responses clear it. Login/logout clear the query cache so another account cannot inherit cached user data. UI hiding improves usability; the API remains authoritative even if a client bypasses it.
+`UserPublic.permissions`, including the `/users/me` response, exposes the server-computed capability list. The generated OpenAPI client types it, and the frontend's `can()` helper uses it for navigation, create buttons and user-action menus. Managers get a read-only Users table. The protected layout refreshes current capabilities into the same Query cache used by the sidebar and action controls before navigation; child route guards use that snapshot and render an explicit Access denied page on direct unauthorized navigation. API 403 responses retain the session; authentication 401 responses clear it. Login/logout clear the query cache so another account cannot inherit cached user data. UI hiding improves usability; the API remains authoritative even if a client bypasses it.
 
 ## Tests and checks
 
@@ -77,9 +77,9 @@ TEST_DATABASE_URL=postgresql://postgres:evios-local-only@127.0.0.1:55433/evios_t
 make check
 ```
 
-`make test` migrates the chosen test database before running pytest. The focused `backend/tests/api/routes/test_rbac.py` covers allowed/denied role combinations, own profile/items, manager read-only access, privilege injection, safe signup, invalid/null roles, existing-token role changes/deactivation, anonymous access, and removal of the development bypass. Existing template backend tests remain adapted to the new role contract.
+`make test` migrates the chosen test database before running pytest. The focused `backend/tests/api/routes/test_rbac.py` covers allowed/denied role combinations, own profile/items, manager read-only access, privilege injection, safe signup, invalid/null roles, existing-token role changes/deactivation, anonymous access, and removal of the development bypass. Existing template backend tests remain adapted to the new role contract. Regression tests also cover invalid/null profile updates, malformed JWT subjects and item ownership for all three roles.
 
-The existing browser admin tests use normal signup and the current role selector/Forbidden behavior:
+The existing browser admin tests use normal signup and the current role selector/Forbidden behavior. They also verify hidden admin account-deletion controls and admin → manager → member navigation within one session:
 
 ```sh
 cd frontend
