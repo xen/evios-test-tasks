@@ -1,0 +1,7 @@
+tunnel: 3c5fb28c-9a5b-4baa-9d42-3348432bab7c
+credentials-file: /etc/cloudflared/tunnel.json
+metrics: 127.0.0.1:20241
+ingress:
+  - hostname: ghost.dzen.dev
+    service: http://127.0.0.1:8080
+  - service: http_status:404

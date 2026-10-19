@@ -1,0 +1,43 @@
+Explicit DNS override for HTTP checks: 104.21.79.240 (local DNS not verified)
+active
+active
+active
+active
+active
+enabled
+enabled
+enabled
+enabled
+enabled
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+permitrootlogin no
+passwordauthentication no
+kbdinteractiveauthentication no
+allowusers deploy
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), disabled (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+22/tcp on tailscale0       ALLOW IN    Anywhere
+22/tcp (v6) on tailscale0  ALLOW IN    Anywhere (v6)
+
+https://ghost.dzen.dev/ 200
+https://ghost.dzen.dev/ghost/ 200
+Owner setup complete
+HTTP redirects to HTTPS
+95.217.219.81:22 unavailable
+95.217.219.81:80 unavailable
+95.217.219.81:443 unavailable
+95.217.219.81:2368 unavailable
+95.217.219.81:3306 unavailable
+95.217.219.81:8080 unavailable
+2a01:4f9:c013:3307::1:22 INCONCLUSIVE: no route
+2a01:4f9:c013:3307::1:80 INCONCLUSIVE: no route
+2a01:4f9:c013:3307::1:443 INCONCLUSIVE: no route
+2a01:4f9:c013:3307::1:2368 INCONCLUSIVE: no route
+2a01:4f9:c013:3307::1:3306 INCONCLUSIVE: no route
+2a01:4f9:c013:3307::1:8080 INCONCLUSIVE: no route

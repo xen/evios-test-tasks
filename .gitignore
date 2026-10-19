@@ -18,3 +18,6 @@ ghost/.state/
 # Application source must remain visible even with a workstation-wide lib ignore.
 !fullstack/frontend/src/lib/
 !fullstack/frontend/src/lib/*.ts
+
+# Deployment credentials (never commit)
+ghost/.secrets/

@@ -27,6 +27,8 @@ for line in Path(sys.argv[1]).open():
         started = True
     if not started or not text:
         continue
+    if text.startswith("<external_codex_apps_open_page>"):
+        continue
     # Async question replies contain the exact question and the human answer.
     if text.startswith("<send_user_message_question_reply>"):
         raw = text.removeprefix("<send_user_message_question_reply>").split("</send_user_message_question_reply>")[0].strip()
