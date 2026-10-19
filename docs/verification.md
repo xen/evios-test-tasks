@@ -61,4 +61,4 @@ The source baseline and implementation are separate commits. The source template
 
 The visible AI dialogue is exported in [conversation.md](../ai/conversation.md) and structured [messages.json](../ai/messages.json), through the export timestamp. Internal instructions, tool payloads, private reasoning and unrelated historical conversations are excluded. The exporter is included for reproducibility.
 
-Repository: [xen/evios-test-tasks](https://github.com/xen/evios-test-tasks). GitHub visibility was checked as PRIVATE. No reviewer was invited and no application was submitted.
+Repository: [xen/evios-test-tasks](https://github.com/xen/evios-test-tasks). At this checkpoint the repository was private. The owner subsequently requested public release; current submission status is in the root README. No job application was submitted.

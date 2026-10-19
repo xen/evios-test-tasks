@@ -21,3 +21,11 @@ Two real reboots were performed during the original stack setup. The second boot
 Initial local NXDOMAIN and old IPv6 cache entries were observed, not assumed. After DNS migration and the user's macOS cache flush, dscacheutil returned only 95.217.219.81 and real browser navigation worked. IPv6 website access is intentionally absent in this revision; no external IPv6 reachability claim is made.
 
 Clean-slate one-command deployment on another VPS, SMTP/reset or device-verification email, newsletters and external backup restore remain unverified. ACME account has no contact email; renewal relies on the active timer. See [README](README.md) for prerequisites and operation.
+
+## Standalone POSIX sh release
+
+The final installer was rewritten as one standalone POSIX `sh` file, with no Python/JS implementation and no repository-file dependencies. Bootstrap user/key/sudo/Tailscale/package installation is included; new enrollment accepts a file-based preauthorized key. The control machine verifies a separate deploy connection over Tailscale, using the bootstrap-verified host key, before lockdown.
+
+`sh -n`, ShellCheck 0.11.0 and invalid-input rejection checks passed. The complete new controller/server installer was run successfully against the supplied VPS using `BOOTSTRAP_TARGET=deploy@100.76.172.36`; the final private SSH handover and all service checks passed. The shell-only verifier passed after the rerun. Gitleaks 8.30.1 scanned the full Git history before publication and found no leaks.
+
+The new-user creation, fresh OS package installation and new-node Tailscale enrollment paths were not executed against a second clean VPS during this release. Earlier work proves the installed live stack, but does not substitute for that missing clean-machine test. No additional paid instance was created. Ubuntu 24.04/AMD64 are supported by the script's package selection but were not independently exercised here. This limitation is retained in the submission.

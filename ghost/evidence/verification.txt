@@ -1,11 +1,10 @@
-DNS resolves only to 95.217.219.81
-https://ghost.dzen.dev/ 200
-https://ghost.dzen.dev/ghost/ 200
-Owner claimed; HTTP redirects to HTTPS
-Public IPv4 TCP 22 unavailable
-Public IPv4 TCP 2368 unavailable
-Public IPv4 TCP 3306 unavailable
-Public IPv4 TCP 8080 unavailable
+DNS: origin IPv4 only
+HTTPS /: 200
+HTTPS /ghost/: 200
+Public TCP 22: blocked
+Public TCP 2368: blocked
+Public TCP 3306: blocked
+Public TCP 8080: blocked
 active
 active
 active
