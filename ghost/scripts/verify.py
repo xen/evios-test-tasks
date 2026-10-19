@@ -1,36 +1,25 @@
 #!/usr/bin/env python3
-"""Public checks from a machine outside the VPS, plus private SSH checks."""
-import argparse, concurrent.futures, ipaddress, json, os, socket, subprocess
-parser = argparse.ArgumentParser()
-parser.add_argument('--edge-ip', help='Explicit Cloudflare edge IP for diagnosing stale local DNS; does not test local DNS')
-args = parser.parse_args()
-curl = ['curl']
-if args.edge_ip:
-    edge = str(ipaddress.IPv4Address(args.edge_ip))
-    print('Explicit DNS override for HTTP checks:', edge, '(local DNS not verified)', flush=True)
-    curl += ['--resolve',f'ghost.dzen.dev:443:{edge}','--resolve',f'ghost.dzen.dev:80:{edge}']
+"""Verify direct IPv4 HTTPS and private-only SSH from outside the VPS."""
+import concurrent.futures, json, os, socket, subprocess
 host = os.environ.get('GHOST_SSH_TARGET', 'deploy@100.76.172.36')
-for url, status in [('https://ghost.dzen.dev/',200), ('https://ghost.dzen.dev/ghost/',200)]:
-    actual = subprocess.check_output(curl+['--fail','--silent','--show-error','--location','--max-time','20','-o','/dev/null','-w','%{http_code}',url], text=True)
-    assert int(actual) == status, (url,actual)
-    print(url, status)
-response = subprocess.check_output(curl+['-fsS','--max-time','20','https://ghost.dzen.dev/ghost/api/admin/authentication/setup/'], text=True)
-assert json.loads(response)['setup'][0]['status'] is True
-print('Owner setup complete')
-headers = subprocess.check_output(curl+['-sSI','--max-time','20','http://ghost.dzen.dev/'], text=True)
+addresses = {item[4][0] for item in socket.getaddrinfo('ghost.dzen.dev',443,type=socket.SOCK_STREAM)}
+assert addresses == {'95.217.219.81'}, addresses
+print('DNS resolves only to 95.217.219.81', flush=True)
+for url in ['https://ghost.dzen.dev/', 'https://ghost.dzen.dev/ghost/']:
+    status = subprocess.check_output(['curl','-4','-fsSL','--max-time','20','-o','/dev/null','-w','%{http_code}',url],text=True)
+    assert status == '200', (url,status)
+    print(url,status,flush=True)
+setup = subprocess.check_output(['curl','-4','-fsS','https://ghost.dzen.dev/ghost/api/admin/authentication/setup/'],text=True)
+assert json.loads(setup)['setup'][0]['status'] is True
+headers = subprocess.check_output(['curl','-4','-sSI','http://ghost.dzen.dev/'],text=True)
 assert '301' in headers.splitlines()[0] and 'location: https://ghost.dzen.dev/' in headers.lower()
-print('HTTP redirects to HTTPS')
-def probe(target):
-    ip, port = target
+print('Owner claimed; HTTP redirects to HTTPS',flush=True)
+def probe(port):
     try:
-        with socket.create_connection((ip,port),timeout=3):
-            raise AssertionError(f'Public port open: {ip}:{port}')
+        with socket.create_connection(('95.217.219.81',port),timeout=3):
+            raise AssertionError(f'Public port open: {port}')
     except (TimeoutError, ConnectionRefusedError): pass
-    except OSError as error:
-        # No local IPv6 route is inconclusive, never a successful firewall proof.
-        if error.errno in (51,65,101,113): return f'{ip}:{port} INCONCLUSIVE: no route'
-        raise
-    return f'{ip}:{port} unavailable'
-with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
-    for result in pool.map(probe,[(ip,p) for ip in ['95.217.219.81','2a01:4f9:c013:3307::1'] for p in [22,80,443,2368,3306,8080]]): print(result)
-subprocess.run(['ssh','-o','BatchMode=yes','-o','ForwardAgent=no',host, 'set -e; sudo -n true; systemctl is-active ghost nginx cloudflared tailscaled mysql; systemctl is-enabled ghost nginx cloudflared tailscaled mysql; test "$(systemctl show ghost -p User --value)" = deploy; sudo nginx -t; sudo sshd -T | grep -E "^(permitrootlogin|passwordauthentication|kbdinteractiveauthentication|allowusers) "; sudo ufw status verbose'], check=True)
+    return f'Public IPv4 TCP {port} unavailable'
+with concurrent.futures.ThreadPoolExecutor() as pool:
+    for result in pool.map(probe,[22,2368,3306,8080]): print(result,flush=True)
+subprocess.run(['ssh','-o','BatchMode=yes','-o','ForwardAgent=no',host, 'set -e; sudo -n true; systemctl is-active ghost nginx mysql tailscaled certbot.timer; systemctl is-enabled ghost nginx mysql tailscaled certbot.timer; test "$(systemctl show ghost -p User --value)" = deploy; ! command -v cloudflared; test ! -e /etc/cloudflared; sudo nginx -t; sudo sshd -T | grep -E "^(permitrootlogin|passwordauthentication|kbdinteractiveauthentication|allowusers) "; sudo ufw status verbose; sudo openssl x509 -in /etc/letsencrypt/live/ghost.dzen.dev/fullchain.pem -noout -issuer -dates'],check=True)

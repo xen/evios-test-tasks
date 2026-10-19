@@ -258,5 +258,55 @@
     "timestamp": "2026-10-19T14:41:13.828Z",
     "role": "assistant",
     "text": "Вторая перезагрузка прошла успешно: сервер работает на новом ядре, cloud-init завершился без ошибок, отказавших systemd-служб нет. SSH через Tailscale и автозапуск всех сервисов работают.\n\nСохраняю скрипты, отчёт проверок и копию переписки в ветку репозитория.\n"
+  },
+  {
+    "timestamp": "2026-10-19T14:42:31.965Z",
+    "role": "assistant",
+    "text": "Ghost настроен: [сайт](https://ghost.dzen.dev) · [админка](https://ghost.dzen.dev/ghost/).\n\n- Ghost работает под `deploy`, за nginx и Cloudflare Tunnel.\n- SSH только через Tailscale: `ssh deploy@100.76.172.36`. Публичный порт 22 закрыт.\n- Проверены HTTPS, вход владельца, повторный деплой и две перезагрузки.\n- Пароль `test@example.com` — в локальном [owner.json](/Users/xen/Me/tests/evios/ghost/.secrets/owner.json), вне Git.\n- Скрипты и отчёт отправлены в [ветку GitHub](https://github.com/xen/evios-test-tasks/tree/feat/ghost-tunnel-deploy).\n\nЛокальный DNS ещё кэширует старый `NXDOMAIN`; публичные DNS уже обновились. Внешняя проверка IPv6 осталась неподтверждённой.\n\n![DNS Ghost в Cloudflare](/Users/xen/Me/tests/evios/ghost/evidence/cloudflare-dns.png)"
+  },
+  {
+    "timestamp": "2026-10-19T14:43:40.138Z",
+    "role": "user",
+    "text": "[https://ghost.dzen.dev/](https://ghost.dzen.dev/) не открывается, в чем причина?\n"
+  },
+  {
+    "timestamp": "2026-10-19T14:43:42.990Z",
+    "role": "assistant",
+    "text": "Проверю DNS, ответ Cloudflare и состояние туннеля на сервере, чтобы найти причину.\n"
+  },
+  {
+    "timestamp": "2026-10-19T14:43:53.313Z",
+    "role": "assistant",
+    "text": "Причина — DNS-кэш: текущий резолвер ещё помнит ответ «домен не существует», полученный до создания записи. Остаток кэша сейчас около **9 минут**.\n\nПроверил: публичный DNS Cloudflare уже возвращает адреса, туннель активен, сайт через Cloudflare отвечает **200 OK**.\n\nПопробуйте через 9 минут. Для немедленного доступа можно временно использовать DNS `1.1.1.1` или `8.8.8.8`."
+  },
+  {
+    "timestamp": "2026-10-19T14:50:05.888Z",
+    "role": "user",
+    "text": "$ sudo dscacheutil -flushcache\nsudo killall -HUP mDNSResponder\n$ dscacheutil -q host -a name ghost.dzen.dev\nname: ghost.dzen.dev\nipv6_address: 2606:4700:3032::6815:4ff0\nipv6_address: 2606:4700:3030::ac43:ac04\n\nПохоже резолвится в ipv6, возможно у меня локально нет доступа к таким адресам. Убери туннель через cloudflare, поставь сертификат через certbot и проверь чтобы сайт был доступен \n\n"
+  },
+  {
+    "timestamp": "2026-10-19T14:50:15.996Z",
+    "role": "assistant",
+    "text": "Переведу сайт на прямой IPv4-доступ: заменю DNS на `95.217.219.81`, открою 80/443, выпущу сертификат Let’s Encrypt через certbot и настрою nginx. SSH останется доступен только через Tailscale. Cloudflare Tunnel удалю после проверки прямого HTTPS.\n"
+  },
+  {
+    "timestamp": "2026-10-19T14:51:49.647Z",
+    "role": "assistant",
+    "text": "DNS уже заменён на A-запись `95.217.219.81` в режиме DNS only; AAAA-запись для домена отсутствует. Порт 80 доступен напрямую, certbot выполняет проверку домена и выпуск сертификата. После этого проверю прямой HTTPS и удалю туннель.\n"
+  },
+  {
+    "timestamp": "2026-10-19T14:53:54.546Z",
+    "role": "assistant",
+    "text": "Прямой HTTPS работает: nginx отдаёт `200 OK`, сертификат Let’s Encrypt действителен до 17 января 2027 года. Сервис cloudflared и отдельный туннель Ghost удалены.\n\nНа Mac всё ещё видны старые IPv6-адреса из кэша macOS. Отправил просьбу повторить очистку после смены DNS; тем временем проверяю автопродление сертификата и обновляю скрипт развёртывания.\n"
+  },
+  {
+    "timestamp": "2026-10-19T14:54:19.484Z",
+    "role": "user",
+    "text": "Question: Сервер уже отвечает напрямую по HTTPS, сертификат Let’s Encrypt выпущен. DNS теперь содержит только A=95.217.219.81, но macOS всё ещё возвращает старые IPv6 Cloudflare. Повторите сейчас `sudo dscacheutil -flushcache` и `sudo killall -HUP mDNSResponder`, затем откройте сайт. Я не могу очистить системный кэш без вашего sudo-пароля; вводить его здесь не нужно. Открылся ли сайт?\n\nAnswer: готово"
+  },
+  {
+    "timestamp": "2026-10-19T14:55:17.672Z",
+    "role": "assistant",
+    "text": "После очистки кэша Mac получает `95.217.219.81`. Сайт открылся в Chrome; обычный запрос по домену также вернул `200 OK`, без подстановки IP.\n\nПроверка продления certbot (`renew --dry-run`) прошла успешно, включая проверку и перезагрузку nginx. Осталось сохранить обновлённые скрипты и результаты в Git.\n"
   }
 ]

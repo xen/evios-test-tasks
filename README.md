@@ -3,7 +3,7 @@
 Private submission workspace for Mikhail Kashkin.
 
 1. **Role-aware Fullstack FastAPI application:** implemented in [fullstack/](fullstack/README.md). Includes backend authorization, React capability checks, database migration, demo accounts, focused tests, and local setup.
-2. **Ghost on Hetzner through tunnels:** [implemented and deployed](ghost/README.md) at https://ghost.dzen.dev. Includes the deployment script, private Tailscale SSH, Cloudflare Tunnel, nginx and verification evidence.
+2. **Ghost on Hetzner through tunnels:** [implemented and deployed](ghost/README.md) at https://ghost.dzen.dev. Includes the deployment script, private Tailscale SSH, direct IPv4 nginx HTTPS, certbot and verification evidence.
 
 The employer's original fullstack brief is saved in [docs/assignment-fullstack.md](docs/assignment-fullstack.md). Source template commit and licence are recorded in [docs/upstream.md](docs/upstream.md). Implementation changes follow the untouched-template baseline commit.
 
