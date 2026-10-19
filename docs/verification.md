@@ -17,6 +17,7 @@ Detailed implementation plan and acceptance criteria: [Russian specification](sp
 | TypeScript and Vite production build | Passed |
 | OpenAPI client regeneration | Passed, no tracked client drift |
 | Repeat `make install` and `make seed` | Passed |
+| Fresh local Git clone, lockfile installation and complete `make check` | Passed; no pre-existing dependencies or generated frontend |
 | Source whitespace / patch checks | `git diff --check` passed |
 
 Backend tests report one upstream Starlette TestClient deprecation warning about httpx. No test was skipped to obtain the result. The full unrelated frontend suite and an external production deployment of this application were not run.
