@@ -38,5 +38,5 @@ if not messages:
 (root / "ai").mkdir(exist_ok=True)
 (root / "ai/messages.json").write_text(json.dumps(messages, ensure_ascii=False, indent=2) + "\n")
 intro = "# AI conversation copy\n\nExport of visible user/assistant messages for this task, up to the export timestamp. Internal instructions, tools and private reasoning are excluded. Async replies show the question and exact human answer. This is a dialogue export, not a reconstructed summary.\n\n"
-(root / "ai/conversation.md").write_text(intro + "\n\n".join(f"## {m['role'].title()} — {m['timestamp']}\n\n{m['text']}" for m in messages) + "\n")
+(root / "ai/conversation.md").write_text(intro + "\n\n".join(f"## {m['role'].title()} — {m['timestamp']}\n\n{m['text'].rstrip()}" for m in messages) + "\n")
 print(f"Exported {len(messages)} visible messages")

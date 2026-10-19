@@ -179,3 +179,75 @@ def test_legacy_development_user_creation_removed(client: TestClient) -> None:
     )
     assert response.status_code == 404
     assert "location" not in response.headers
+
+
+@pytest.mark.parametrize("role", list(Role))
+def test_null_email_rejected_without_changing_profile(
+    client: TestClient, db: Session, role: Role
+) -> None:
+    user, headers = account(client, db, role)
+    email = user.email
+    assert (
+        client.patch(
+            f"{API}/users/me", headers=headers, json={"email": None}
+        ).status_code
+        == 422
+    )
+    db.refresh(user)
+    assert user.email == email
+    assert user.role == role
+    assert client.get(f"{API}/users/me", headers=headers).status_code == 200
+
+
+@pytest.mark.parametrize("field", ["email", "password"])
+def test_admin_null_update_rejected_without_changing_user(
+    client: TestClient, db: Session, field: str
+) -> None:
+    _, headers = account(client, db, Role.ADMIN)
+    user, _ = account(client, db, Role.MEMBER)
+    email, password_hash = user.email, user.hashed_password
+    assert (
+        client.patch(
+            f"{API}/users/{user.id}", headers=headers, json={field: None}
+        ).status_code
+        == 422
+    )
+    db.refresh(user)
+    assert (user.email, user.hashed_password) == (email, password_hash)
+
+
+@pytest.mark.parametrize("subject", ["not-a-uuid", None, 123, str(uuid.uuid4())])
+def test_invalid_token_subject_is_unauthorized(
+    client: TestClient, subject: object
+) -> None:
+    from datetime import timedelta
+
+    from app.core.security import create_access_token
+
+    token = create_access_token(subject, timedelta(minutes=1))
+    assert (
+        client.get(
+            f"{API}/users/me", headers={"Authorization": f"Bearer {token}"}
+        ).status_code
+        == 401
+    )
+
+
+@pytest.mark.parametrize("role", list(Role))
+def test_item_ownership_matrix(client: TestClient, db: Session, role: Role) -> None:
+    _, headers = account(client, db, role)
+    _, owner_headers = account(client, db, Role.MEMBER)
+    item = client.post(
+        f"{API}/items/", headers=owner_headers, json={"title": "Private item"}
+    ).json()
+    path = f"{API}/items/{item['id']}"
+    expected = 200 if role == Role.ADMIN else 403
+    assert client.get(path, headers=headers).status_code == expected
+    assert (
+        client.put(path, headers=headers, json={"title": "Changed"}).status_code
+        == expected
+    )
+    assert client.delete(path, headers=headers).status_code == expected
+    assert client.get(path, headers=owner_headers).status_code == (
+        404 if role == Role.ADMIN else 200
+    )

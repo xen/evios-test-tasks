@@ -51,11 +51,11 @@ class UserUpdate(SQLModel):
     is_active: bool | None = None
     role: Role | None = None
 
-    @field_validator("role", "is_active", mode="before")
+    @field_validator("role", "is_active", "email", "password", mode="before")
     @classmethod
-    def reject_null_privileges(cls, value: object) -> object:
+    def reject_null_updates(cls, value: object) -> object:
         if value is None:
-            raise ValueError("Role and active status cannot be null")
+            raise ValueError("This field cannot be null")
         return value
 
     full_name: str | None = Field(default=None, max_length=255)
@@ -66,6 +66,13 @@ class UserUpdateMe(SQLModel):
     model_config = SQLModelConfig(extra="forbid")
     full_name: str | None = Field(default=None, max_length=255)
     email: EmailStr | None = Field(default=None, max_length=255)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def reject_null_email(cls, value: object) -> object:
+        if value is None:
+            raise ValueError("Email cannot be null")
+        return value
 
 
 class UpdatePassword(SQLModel):
@@ -155,7 +162,7 @@ class Token(SQLModel):
 
 # Contents of JWT token
 class TokenPayload(SQLModel):
-    sub: str | None = None
+    sub: uuid.UUID
 
 
 class NewPassword(SQLModel):

@@ -1,5 +1,12 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
+import {
+  createFileRoute,
+  ErrorComponent,
+  Outlet,
+  redirect,
+} from "@tanstack/react-router"
 
+import { AxiosError } from "axios"
+import AccessDenied from "@/components/Common/AccessDenied"
 import { Footer } from "@/components/Common/Footer"
 import AppSidebar from "@/components/Sidebar/AppSidebar"
 import {
@@ -8,15 +15,28 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { isLoggedIn } from "@/hooks/useAuth"
+import { currentUserQueryOptions } from "@/lib/currentUser"
+import { queryClient } from "@/lib/queryClient"
 
 export const Route = createFileRoute("/_layout")({
   component: Layout,
+  errorComponent: ({ error }) =>
+    error instanceof AxiosError && error.response?.status === 403 ? (
+      <AccessDenied />
+    ) : (
+      <ErrorComponent error={error} />
+    ),
   beforeLoad: async () => {
     if (!isLoggedIn()) {
       throw redirect({
         to: "/login",
       })
     }
+    const currentUser = await queryClient.fetchQuery({
+      ...currentUserQueryOptions,
+      staleTime: 0,
+    })
+    return { currentUser }
   },
 })
 

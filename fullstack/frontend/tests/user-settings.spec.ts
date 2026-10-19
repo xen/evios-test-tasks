@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test"
 import { firstSuperuser, firstSuperuserPassword } from "./config.ts"
-import { createUser } from "./utils/signup.ts"
 import { randomEmail, randomPassword } from "./utils/random"
+import { createUser } from "./utils/signup.ts"
 import { logInUser, logOutUser } from "./utils/user"
 
 const tabs = ["My profile", "Password", "Danger zone"]
@@ -14,10 +14,51 @@ test("My profile tab is active by default", async ({ page }) => {
   )
 })
 
-test("All tabs are visible", async ({ page }) => {
+test("Admin sees only permitted settings tabs", async ({ page }) => {
   await page.goto("/settings")
-  for (const tab of tabs) {
-    await expect(page.getByRole("tab", { name: tab })).toBeVisible()
+  await expect(page.getByRole("tab")).toHaveText(["My profile", "Password"])
+  await expect(page.getByRole("tab", { name: "Danger zone" })).toHaveCount(0)
+})
+
+test.describe("Non-admin settings tabs", () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  for (const role of ["member", "manager"] as const) {
+    test(`${role} can access all personal settings tabs`, async ({
+      page,
+      request,
+    }) => {
+      const api = process.env.VITE_API_URL
+      if (!api) throw new Error("VITE_API_URL is required")
+      const login = await request.post(`${api}/api/v1/login/access-token`, {
+        form: { username: firstSuperuser, password: firstSuperuserPassword },
+      })
+      expect(login.ok()).toBeTruthy()
+      const { access_token } = await login.json()
+      const headers = { Authorization: `Bearer ${access_token}` }
+      const email = randomEmail()
+      const password = randomPassword()
+      const created = await request.post(`${api}/api/v1/users/`, {
+        headers,
+        data: { email, password, role },
+      })
+      expect(created.ok()).toBeTruthy()
+      const user = await created.json()
+      try {
+        await logInUser(page, email, password)
+        await page.goto("/settings")
+        await expect(page.getByRole("tab")).toHaveText(tabs)
+        await page.getByRole("tab", { name: "Danger zone" }).click()
+        await expect(
+          page.getByRole("heading", { name: "Delete Account" }),
+        ).toBeVisible()
+      } finally {
+        const deleted = await request.delete(`${api}/api/v1/users/${user.id}`, {
+          headers,
+        })
+        expect(deleted.ok()).toBeTruthy()
+      }
+    })
   }
 })
 
