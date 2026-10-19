@@ -9,7 +9,7 @@ Detailed implementation plan and acceptance criteria: [Russian specification](sp
 | Check | Result |
 | --- | --- |
 | Untouched template CRUD baseline | 10 passed |
-| Full backend pytest suite on isolated `evios_test` PostgreSQL database | 76 passed in 8.30 s |
+| Full backend pytest suite on isolated `evios_test`, clean-checkout configuration | 76 passed in 5.93 s |
 | Existing Playwright admin suite, Chromium, one worker | 13 passed in 14.4 s, including authentication setup |
 | Ruff checks and formatting | Passed |
 | mypy, 21 application source files | Passed |
@@ -19,6 +19,8 @@ Detailed implementation plan and acceptance criteria: [Russian specification](sp
 | Repeat `make install` and `make seed` | Passed |
 | Fresh local Git clone, lockfile installation and complete `make check` | Passed; no pre-existing dependencies or generated frontend |
 | Source whitespace / patch checks | `git diff --check` passed |
+
+The clean-checkout run exposed an inherited recovery-email test relying on local sender configuration. Email calls in recovery/user-creation tests now mock the route-local sender and assert the destination, so no SMTP service is needed. All 76 backend tests passed with the documented example configuration.
 
 Backend tests report one upstream Starlette TestClient deprecation warning about httpx. No test was skipped to obtain the result. The full unrelated frontend suite and an external production deployment of this application were not run.
 
