@@ -42,6 +42,7 @@ const useAuth = () => {
     const response = await LoginService.loginAccessToken({
       body: data,
     })
+    queryClient.clear()
     localStorage.setItem("access_token", response.data.access_token)
   }
 
@@ -55,6 +56,7 @@ const useAuth = () => {
 
   const logout = () => {
     localStorage.removeItem("access_token")
+    queryClient.clear()
     navigate({ to: "/login" })
   }
 

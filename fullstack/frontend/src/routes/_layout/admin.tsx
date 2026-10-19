@@ -1,13 +1,16 @@
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { createFileRoute, redirect } from "@tanstack/react-router"
+import { createFileRoute, ErrorComponent } from "@tanstack/react-router"
+import { AxiosError } from "axios"
 import { Suspense } from "react"
 
 import { type UserPublic, UsersService } from "@/client"
 import AddUser from "@/components/Admin/AddUser"
 import { columns, type UserTableData } from "@/components/Admin/columns"
+import AccessDenied from "@/components/Common/AccessDenied"
 import { DataTable } from "@/components/Common/DataTable"
 import PendingUsers from "@/components/Pending/PendingUsers"
 import useAuth from "@/hooks/useAuth"
+import { can } from "@/lib/permissions"
 
 function getUsersQueryOptions() {
   return {
@@ -19,13 +22,15 @@ function getUsersQueryOptions() {
 
 export const Route = createFileRoute("/_layout/admin")({
   component: Admin,
+  errorComponent: ({ error }) =>
+    error instanceof AxiosError && error.response?.status === 403 ? (
+      <AccessDenied />
+    ) : (
+      <ErrorComponent error={error} />
+    ),
   beforeLoad: async () => {
     const { data: user } = await UsersService.readUserMe()
-    if (!user.is_superuser) {
-      throw redirect({
-        to: "/",
-      })
-    }
+    return { canReadUsers: can(user, "users:read") }
   },
   head: () => ({
     meta: [
@@ -57,16 +62,19 @@ function UsersTable() {
 }
 
 function Admin() {
+  const { canReadUsers } = Route.useRouteContext()
+  const { user } = useAuth()
+  if (!canReadUsers || !can(user, "users:read")) return <AccessDenied />
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Users</h1>
           <p className="text-muted-foreground">
-            Manage user accounts and permissions
+            View user accounts and permissions
           </p>
         </div>
-        <AddUser />
+        {can(user, "users:write") && <AddUser />}
       </div>
       <UsersTable />
     </div>

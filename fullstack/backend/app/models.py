@@ -1,8 +1,13 @@
 import uuid
 from datetime import UTC, datetime
 
-from pydantic import EmailStr
+from pydantic import EmailStr, computed_field, field_validator
+from sqlalchemy import CheckConstraint
+from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel._compat import SQLModelConfig
+
+from app.permissions import Permission, Role, permissions_for
 
 
 def get_datetime_utc() -> datetime:
@@ -13,16 +18,27 @@ def get_datetime_utc() -> datetime:
 class UserBase(SQLModel):
     email: EmailStr = Field(unique=True, index=True, max_length=255)
     is_active: bool = True
-    is_superuser: bool = False
+    role: Role = Field(
+        default=Role.MEMBER,
+        sa_type=SAEnum(
+            Role,
+            native_enum=False,
+            values_callable=lambda roles: [role.value for role in roles],
+            length=16,
+            validate_strings=True,
+        ),
+    )
     full_name: str | None = Field(default=None, max_length=255)
 
 
 # Properties to receive via API on creation
 class UserCreate(UserBase):
+    model_config = SQLModelConfig(extra="forbid")
     password: str = Field(min_length=8, max_length=128)
 
 
 class UserRegister(SQLModel):
+    model_config = SQLModelConfig(extra="forbid")
     email: EmailStr = Field(max_length=255)
     password: str = Field(min_length=8, max_length=128)
     full_name: str | None = Field(default=None, max_length=255)
@@ -30,14 +46,24 @@ class UserRegister(SQLModel):
 
 # Properties to receive via API on update, all are optional
 class UserUpdate(SQLModel):
+    model_config = SQLModelConfig(extra="forbid")
     email: EmailStr | None = Field(default=None, max_length=255)
     is_active: bool | None = None
-    is_superuser: bool | None = None
+    role: Role | None = None
+
+    @field_validator("role", "is_active", mode="before")
+    @classmethod
+    def reject_null_privileges(cls, value: object) -> object:
+        if value is None:
+            raise ValueError("Role and active status cannot be null")
+        return value
+
     full_name: str | None = Field(default=None, max_length=255)
     password: str | None = Field(default=None, min_length=8, max_length=128)
 
 
 class UserUpdateMe(SQLModel):
+    model_config = SQLModelConfig(extra="forbid")
     full_name: str | None = Field(default=None, max_length=255)
     email: EmailStr | None = Field(default=None, max_length=255)
 
@@ -49,6 +75,12 @@ class UpdatePassword(SQLModel):
 
 # Database model, database table inferred from class name
 class User(UserBase, table=True):
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('admin', 'manager', 'member')", name="user_role_check"
+        ),
+    )
+
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     hashed_password: str
     created_at: datetime | None = Field(default_factory=get_datetime_utc)
@@ -59,6 +91,11 @@ class User(UserBase, table=True):
 class UserPublic(UserBase):
     id: uuid.UUID
     created_at: datetime | None = None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def permissions(self) -> list[Permission]:
+        return permissions_for(self.role)
 
 
 class UsersPublic(SQLModel):

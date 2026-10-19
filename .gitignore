@@ -9,3 +9,9 @@
 **/dist/
 **/output/
 ghost/.state/
+
+**/.playwright-cli/
+**/.env.local
+**/playwright/.auth/
+**/.mypy_cache/
+**/.ty_cache/

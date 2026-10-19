@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test"
-import { createUser } from "./utils/privateApi"
+import { createUser } from "./utils/signup"
 import {
   randomEmail,
   randomItemDescription,

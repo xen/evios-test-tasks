@@ -1,88 +1,97 @@
-# Full Stack FastAPI Template
+# Role-aware FastAPI application
 
-[![Test Docker Compose](../../actions/workflows/test-docker-compose.yml/badge.svg)](../../actions/workflows/test-docker-compose.yml)
-[![Test Backend](../../actions/workflows/test-backend.yml/badge.svg)](../../actions/workflows/test-backend.yml)
+RBAC implementation on the [Full Stack FastAPI Template](https://github.com/fastapi/full-stack-fastapi-template), with PostgreSQL, SQLModel, FastAPI, React, TanStack Router/Query, and TypeScript. Original MIT licence: [LICENSE](LICENSE). Exact upstream revision: [source provenance](../docs/upstream.md).
 
-## Technology Stack and Features
+## Run locally
 
-- ⚡ [**FastAPI**](https://fastapi.tiangolo.com) for the Python backend API.
-  - 🧰 [SQLModel](https://sqlmodel.tiangolo.com) for the Python SQL database interactions (ORM).
-  - 🔍 [Pydantic](https://docs.pydantic.dev), used by FastAPI, for the data validation and settings management.
-  - 💾 [PostgreSQL](https://www.postgresql.org) as the SQL database.
-- 🚀 [React](https://react.dev) for the frontend.
-  - 🧩 Built into the backend application and served by FastAPI on the same domain as the API.
-  - 💃 Using TypeScript, hooks, [Vite](https://vitejs.dev), and other parts of a modern frontend stack.
-  - 🎨 [Tailwind CSS](https://tailwindcss.com) and [shadcn/ui](https://ui.shadcn.com) for the frontend components.
-  - 🤖 An automatically generated frontend client.
-  - 🧪 [Playwright](https://playwright.dev) for end-to-end testing.
-  - 🦇 Dark mode support.
-- ☁️ [FastAPI Cloud](https://fastapicloud.com) for deployment.
-- 🐋 [Docker Compose](https://www.docker.com) for local services and self-hosted deployment.
-  - 📞 [Traefik](https://traefik.io) as a reverse proxy with automatic HTTPS.
-- 🔒 Secure password hashing by default.
-- 🔑 JWT (JSON Web Token) authentication.
-- 📫 Email-based password recovery.
-- ✉️ [React Email](https://react.email) for email templates.
-- 📬 [Mailpit](https://mailpit.axllent.org) for local email testing during development.
-- ✅ Tests with [Pytest](https://pytest.org).
-- 🏭 CI (continuous integration) and CD (continuous deployment) based on GitHub Actions.
+Requirements: Docker Compose v2, [uv](https://docs.astral.sh/uv/), Python 3.14 (installed by uv if needed), [Bun](https://bun.sh/) 1.3+, Make. This tested development setup binds services to loopback and uses separate ports from a default template installation.
 
-### Dashboard Login
+From the repository root:
 
-![Dashboard login screenshot](img/login.png)
+```sh
+cd fullstack
+cp .env.example .env
+cp frontend/.env.example frontend/.env.local
+make install
+make db
+make migrate
+make seed
+```
 
-### Dashboard - Admin
+In two terminals, from `fullstack/`:
 
-![Admin dashboard screenshot](img/dashboard.png)
+```sh
+make backend
+```
 
-### Dashboard - Items
+```sh
+make frontend
+```
 
-![Items dashboard screenshot](img/dashboard-items.png)
+Open **http://127.0.0.1:5174**. API documentation: http://127.0.0.1:8001/docs. PostgreSQL: `127.0.0.1:55433`. The `.env.example` values are for disposable local use only. `make seed` creates the following accounts:
 
-### Dashboard - Dark Mode
+| Account | Role | Password from example configuration |
+| --- | --- | --- |
+| admin@example.com | admin | evios-local-only |
+| manager@example.com | manager | evios-demo-password |
+| member@example.com | member | evios-demo-password |
 
-![Dark mode dashboard screenshot](img/dashboard-dark.png)
+The admin identity/password use `FIRST_SUPERUSER` and `FIRST_SUPERUSER_PASSWORD`; other demo accounts use `DEMO_PASSWORD`. Seeding is repeatable, preserves existing accounts/passwords, and fails explicitly if a demo account has an unexpected role or inactive status. New signups always receive `member`. Mail delivery is disabled in the example configuration; optional SMTP settings remain available from the template.
 
-### React Email Templates
+To stop the local database while preserving data: `docker compose -f compose.local.yml stop`.
 
-![Email templates screenshot](img/react-email.png)
+## Permission matrix
 
-### Mailpit - Local Email Testing
+| Action / surface | admin | manager | member |
+| --- | --- | --- | --- |
+| List users, `GET /api/v1/users/`, Users page `/admin` | Yes | Yes | No |
+| Read another user's profile, `GET /api/v1/users/{id}` | Yes | Yes | No |
+| Create user / assign role, `POST /api/v1/users/` | Yes | No | No |
+| Update or delete another user, `PATCH/DELETE /api/v1/users/{id}` | Yes | No | No |
+| Metrics, `GET /api/v1/metrics/`, page `/metrics` | Yes | Yes | No |
+| Read/update own profile, `GET/PATCH /api/v1/users/me` | Yes | Yes | Yes |
+| Change own password | Yes | Yes | Yes |
+| Delete own account | No | Yes | Yes |
+| Own items: list/read/create/update/delete | Yes | Yes | Yes |
+| Access others' items (existing template admin behavior) | Yes | No | No |
+| Send test email / preview recovery email (template utilities) | Yes | No | No |
 
-![Mailpit screenshot](img/mailpit.png)
+Settings in the template are personal profile/password/account settings, available to all roles. It has no global settings endpoint, so none was invented. Administrative operations are admin-only. Metrics are real current user/item totals, without analytics infrastructure.
 
-### Interactive API Documentation
+## Authorization approach
 
-![API docs](img/docs.png)
+`backend/app/permissions.py` defines roles and the small role-to-permissions mapping. `require_permission()` in `api/deps.py` produces FastAPI dependencies; user listing, user management, and metrics declare the relevant dependency. Authentication loads the current active user from PostgreSQL for each request. JWTs identify the user and do not carry roles; a role change or deactivation therefore applies to existing tokens immediately. Missing/invalid authentication returns 401; authorization denial returns 403. Ownership checks on personal resources stay in their resource handlers, with the template's admin access preserved.
 
-## How to Use It
+The `role` column is a non-null VARCHAR with a PostgreSQL CHECK constraint and Python enum validation. The migration upgrades existing `is_superuser=true` users to `admin` and all others to `member`, then removes the boolean. Downgrading maps admins to true and members/managers to false, so the manager distinction is lost on downgrade. Register/self-update schemas reject privilege fields, and administrative schemas reject unknown roles and legacy fields. There is one source of authority: no boolean compatibility alias. The template's unauthenticated development-only `/private/users/` route was removed; test fixtures use normal signup.
 
-Click the **Use this template** button at the top of this page to create a new repository.
+`UserPublic.permissions`, including the `/users/me` response, exposes the server-computed capability list. The generated OpenAPI client types it, and the frontend's `can()` helper uses it for navigation, create buttons and user-action menus. Managers get a read-only Users table. Route guards fetch current capabilities and render an explicit Access denied page on direct unauthorized navigation. API 403 responses retain the session; authentication 401 responses clear it. Login/logout clear the query cache so another account cannot inherit cached user data. UI hiding improves usability; the API remains authoritative even if a client bypasses it.
 
-## Backend Development
+## Tests and checks
 
-Backend docs: [backend/README.md](./backend/README.md).
+Use a separate disposable database: the inherited backend fixtures delete users and items at teardown. Do not point them at the demo database or a production database.
 
-## Frontend Development
+```sh
+# From fullstack/, with the local database running. Run createdb once.
+docker compose -f compose.local.yml exec -T db createdb -U postgres evios_test
+TEST_DATABASE_URL=postgresql://postgres:evios-local-only@127.0.0.1:55433/evios_test make test
+make check
+```
 
-Frontend docs: [frontend/README.md](./frontend/README.md).
+`make test` migrates the chosen test database before running pytest. The focused `backend/tests/api/routes/test_rbac.py` covers allowed/denied role combinations, own profile/items, manager read-only access, privilege injection, safe signup, invalid/null roles, existing-token role changes/deactivation, anonymous access, and removal of the development bypass. Existing template backend tests remain adapted to the new role contract.
 
-## Deployment
+The existing browser admin tests use normal signup and the current role selector/Forbidden behavior:
 
-FastAPI Cloud deployment: [deployment.md](./deployment.md).
+```sh
+cd frontend
+bunx playwright install chromium
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:5174 VITE_API_URL=http://127.0.0.1:8001 \
+  bunx playwright test tests/admin.spec.ts --project=chromium --workers=1 --reporter=line
+```
 
-Self-hosted deployment with Docker Compose: [deployment-docker-compose.md](./deployment-docker-compose.md).
+Keep the app and seeded demo accounts running for browser tests. They create test accounts in the demo database. `make check` runs Ruff, mypy, ty, TypeScript and the Vite production build. `make client` regenerates the OpenAPI client after API/schema changes. Generated frontend output is ignored by git.
 
-## Development
+## Scope and trade-offs
 
-General development docs: [development.md](./development.md).
+No external policy engine, dynamic role editor, global settings product, or extensive analytics system was added. Adding a role requires a backend enum/policy/schema migration and updating the role selector; frontend authorization conditions use capabilities. The existing `/admin` URL is retained as the Users route and supports managers. User-list pagination stays at the template's first 100 rows.
 
-This includes the local FastAPI and Vite workflow, Docker Compose services, `.env` configuration, and more.
-
-## Release Notes
-
-Check the file [release-notes.md](./release-notes.md).
-
-## License
-
-The Full Stack FastAPI Template is licensed under the terms of the MIT license.
+The assignment suggests a one-hour timebox. Actual work and verification are recorded in [verification notes](../docs/verification.md); no claim is made that unrelated prior template exploration was part of the timed implementation. Ghost work is explicitly deferred in the repository root.
