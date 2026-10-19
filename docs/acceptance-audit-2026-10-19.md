@@ -31,7 +31,7 @@ F3 — ошибка обработки некорректного токена, 
 | A11 — удалённый API даёт 404 | Passed | Повторно проверены GET/POST в development и production: 404, без Location, JSON |
 | A12 — desktop/mobile | Passed | Визуально проверены admin Settings на 1200 px и 390 px; предыдущие Users/Metrics/denial screenshots сохраняются в отчёте |
 | A13 — автоматические проверки | Passed | 88 pytest, 15 Chromium browser checks, Ruff, mypy, ty, TypeScript/Vite; OpenAPI client без drift |
-| A14 — приватный репозиторий и состав сдачи | Проверяется при отправке PR | Отдельная ветка исправлений, исходники/README/spec, история, актуальный AI dialogue; PRIVATE и remote SHA сверяются после push |
+| A14 — приватный репозиторий и состав сдачи | Passed | PR #1 открыт в main из отдельной ветки; GitHub подтвердил PRIVATE и совпадение кода PR с локальным коммитом; AI dialogue обновлён |
 | A15 — Ghost отдельно | Passed | Код и VPS Ghost не изменялись |
 
 ## Выполненные команды и результаты
@@ -72,3 +72,10 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:5175 VITE_API_URL=http://127.0.0.1:8002 \
 ## Передача на ревью
 
 Исправления оформляются PR в `main`; сама `main` до ревью не изменяется. В PR запрашивается `@codex review` с ссылкой на эту матрицу и спеку. Запрос ревью не считается завершённым ревью. PR не сливается автоматически.
+
+
+## Завершающая проверка
+
+Чистый клон ветки исправлений: установка по lock-файлам, `make check` и полный backend-набор с `.env.example` прошли. Результат pytest в чистом клоне: **88 passed**, 20,36 с. Новые source-файлы общего cache присутствуют в Git; локальный глобальный ignore `lib` не влияет на состав сдачи.
+
+[PR #1](https://github.com/xen/evios-test-tasks/pull/1) открыт в `main`, репозиторий PRIVATE. Ревью Codex запрашивается отдельным комментарием после последней отправки материалов. PR не слит.
