@@ -1,6 +1,6 @@
 # Verification — 2026-10-19
 
-Latest acceptance audit and fixes: [2026-10-19 audit](acceptance-audit-2026-10-19.md). The results below preserve the original implementation run; the audit contains the current 88 backend / 15 browser checks.
+Latest acceptance audit and fixes: [2026-10-19 audit](acceptance-audit-2026-10-19.md). The results below preserve the original implementation run; the audit contains the current 88 backend / 66 full-suite browser checks.
 
 Scope: first assignment, role-aware Fullstack FastAPI application. Ghost is deferred at the user's request; the designated VPS was inspected read-only and was not modified.
 

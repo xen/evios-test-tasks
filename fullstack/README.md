@@ -88,6 +88,15 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:5174 VITE_API_URL=http://127.0.0.1:8001 \
   bunx playwright test tests/admin.spec.ts --project=chromium --workers=1 --reporter=line
 ```
 
+To run the complete Chromium suite, including email password recovery, also provide a local Mailpit instance. Configure the backend with `SMTP_HOST`, `SMTP_PORT`, `SMTP_TLS=False`, and `EMAILS_FROM_EMAIL`, and restart it. Set `MAILPIT_HOST` to that same Mailpit instance's HTTP URL. SMTP remains disabled in the default example configuration.
+
+```sh
+# frontend/, with the app and local Mailpit running:
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:5174 VITE_API_URL=http://127.0.0.1:8001 \
+  MAILPIT_HOST=http://127.0.0.1:8025 \
+  bunx playwright test --project=chromium --workers=1 --reporter=line
+```
+
 Keep the app and seeded demo accounts running for browser tests. They create test accounts in the demo database. `make check` runs Ruff, mypy, ty, TypeScript and the Vite production build. `make client` regenerates the OpenAPI client after API/schema changes. Generated frontend output is ignored by git.
 
 ## Scope and trade-offs

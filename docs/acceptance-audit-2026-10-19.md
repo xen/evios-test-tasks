@@ -30,7 +30,7 @@ F3 — ошибка обработки некорректного токена, 
 | A10 — согласованный cache и сохранение сеанса при 403 | Passed | Общий cache из loader; один browser context после смены роли; Settings доступны после отказа |
 | A11 — удалённый API даёт 404 | Passed | Повторно проверены GET/POST в development и production: 404, без Location, JSON |
 | A12 — desktop/mobile | Passed | Визуально проверены admin Settings на 1200 px и 390 px; предыдущие Users/Metrics/denial screenshots сохраняются в отчёте |
-| A13 — автоматические проверки | Passed | 88 pytest, 15 Chromium browser checks, Ruff, mypy, ty, TypeScript/Vite; OpenAPI client без drift |
+| A13 — автоматические проверки | Passed | 88 pytest, 66 проверок полного Chromium-набора после замечания Codex, Ruff, mypy, ty, TypeScript/Vite; OpenAPI client без drift |
 | A14 — приватный репозиторий и состав сдачи | Passed | PR #1 открыт в main из отдельной ветки; GitHub подтвердил PRIVATE и совпадение кода PR с локальным коммитом; AI dialogue обновлён |
 | A15 — Ghost отдельно | Passed | Код и VPS Ghost не изменялись |
 
@@ -59,9 +59,9 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:5175 VITE_API_URL=http://127.0.0.1:8002 \
   bunx playwright test tests/admin.spec.ts --project=chromium --workers=1 --reporter=line
 ```
 
-Последний browser-прогон: **15 passed**, 16,1 с, включая setup. Добавлены проверки запрета самостоятельного удаления admin и изменений роли в том же browser session. Доступные для manager пункты и действия проверяются реальным API, а не mocked permissions.
+Первичный целевой browser-прогон аудита: **15 passed**, 16,1 с, включая setup. Добавлены проверки запрета самостоятельного удаления admin и изменений роли в том же browser session. Доступные для manager пункты и действия проверяются реальным API, а не mocked permissions.
 
-Демонстрационные admin/member/manager сохранены. Тест изменений роли создаёт собственный временный аккаунт и удаляет его в finally. Полный набор unrelated frontend-тестов, SMTP-доставка и внешний production deployment не выполнялись; эти результаты не заявляются.
+Демонстрационные admin/member/manager сохранены. Тест изменений роли создаёт собственный временный аккаунт и удаляет его в finally. На первоначальном этапе проверялся целевой admin-набор. Полный Chromium-набор и SMTP через локальный Mailpit дополнительно проверены при исправлении замечания Codex ниже. Внешний production deployment не выполнялся.
 
 ## Скриншоты
 
@@ -79,3 +79,26 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:5175 VITE_API_URL=http://127.0.0.1:8002 \
 Чистый клон ветки исправлений: установка по lock-файлам, `make check` и полный backend-набор с `.env.example` прошли. Результат pytest в чистом клоне: **88 passed**, 20,36 с. Новые source-файлы общего cache присутствуют в Git; локальный глобальный ignore `lib` не влияет на состав сдачи.
 
 [PR #1](https://github.com/xen/evios-test-tasks/pull/1) открыт в `main`, репозиторий PRIVATE. Ревью Codex запрашивается отдельным комментарием после последней отправки материалов. PR не слит.
+
+
+## Исправление замечания Codex в PR #1
+
+Codex проверил `e171345` и оставил одно замечание P2: [обновить старый settings-tab regression](https://github.com/xen/evios-test-tasks/pull/1#discussion_r4314170260). `user-settings.spec.ts` по-прежнему ожидал Danger zone у seeded admin, хотя эта вкладка ему запрещена.
+
+Исправлено в существующем settings-наборе:
+
+- Admin видит ровно My profile и Password; Danger zone отсутствует.
+- Member и manager проверяются отдельными аккаунтами и видят все три личные вкладки, включая доступ к разделу удаления. Тесты создают собственные аккаунты и удаляют их в finally.
+- Продуктовые разрешения не менялись: исправлены ожидания теста и добавлено покрытие остальных ролей.
+
+Повторная проверка:
+
+```sh
+# frontend/, с запущенными audit API/UI и локальным Mailpit
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:5175 VITE_API_URL=http://127.0.0.1:8002 \
+  bunx playwright test --project=chromium --workers=1 --reporter=line
+```
+
+**66 passed**, включая setup, за 1,1 мин. Запущены все существующие Chromium spec-файлы, без grep-фильтра и пропусков. Проверено и восстановление пароля через локальный Mailpit: backend использовал SMTP 1025, тесты — Mailpit HTTP 8025. Пример конфигурации отключает почту; для этого интеграционного сценария требуется явно настроенный SMTP/Mailpit.
+
+`make check` прошёл; повторный полный backend-прогон — **88 passed** за 12,35 с, с прежним upstream warning Starlette/httpx. Продуктовый код и миграция не изменялись, поэтому повторный перенос данных для этого исправления не требовался.
